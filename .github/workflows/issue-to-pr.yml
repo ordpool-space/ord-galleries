@@ -33,6 +33,8 @@ jobs:
 
       - name: Extract issue data and build YAML
         id: build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p galleries
 
