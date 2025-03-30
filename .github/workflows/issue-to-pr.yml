@@ -1,0 +1,86 @@
+name: Convert Gallery Submission to Pull Request
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  convert-issue-to-pr:
+    if: contains(github.event.issue.labels.*.name, 'submission')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract and generate gallery file
+        id: build
+        run: |
+          mkdir -p galleries
+
+          number="${{ github.event.issue.number }}"
+          body="${{ github.event.issue.body }}"
+          author="${{ github.event.issue.user.login }}"
+
+          get_value() {
+            echo "$body" | grep -A1 "^${1}:" | tail -n1 | sed 's/^ *//'
+          }
+
+          galleryId=$(get_value "galleryId")
+          title=$(get_value "title")
+          previewId=$(get_value "previewId")
+          description=$(get_value "description")
+          category=$(get_value "category")
+
+          # Sanitize title into a safe filename
+          safe_title=$(echo "$title" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/ /-/g' \
+            | sed 's/[^a-z0-9-]//g')
+
+          [ -z "$safe_title" ] && safe_title="gallery-${number}"
+          filename="galleries/${safe_title}.yaml"
+
+          echo "Creating file: $filename"
+
+          {
+            echo "galleryId: \"$galleryId\""
+            echo "title: \"$title\""
+            echo "author: \"$author\""
+            [ -n "$previewId" ] && echo "previewId: \"$previewId\""
+            [ -n "$description" ] && echo "description: \"$description\""
+            [ -n "$category" ] && echo "category: \"$category\""
+          } > "$filename"
+
+          echo "filename=$filename" >> $GITHUB_OUTPUT
+          echo "title=$title" >> $GITHUB_OUTPUT
+          echo "safe_title=$safe_title" >> $GITHUB_OUTPUT
+          echo "galleryId=$galleryId" >> $GITHUB_OUTPUT
+          echo "previewId=$previewId" >> $GITHUB_OUTPUT
+          echo "description=$description" >> $GITHUB_OUTPUT
+          echo "category=$category" >> $GITHUB_OUTPUT
+          echo "author=$author" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "Add gallery from issue #${{ github.event.issue.number }} (${{ steps.build.outputs.safe_title }})"
+          branch: "gallery-submission-${{ github.event.issue.number }}"
+          title: "Add gallery from issue #${{ github.event.issue.number }} (${{ steps.build.outputs.safe_title }}): \"${{ steps.build.outputs.title }}\""
+          body: |
+            Closes #${{ github.event.issue.number }}
+
+            Submitted by @${{ steps.build.outputs.author }}.
+
+            **Gallery Details:**
+            - **Title:** ${{ steps.build.outputs.title }}
+            - **Filename:** ${{ steps.build.outputs.safe_title }}.yaml
+            - **Gallery ID:** [${{ steps.build.outputs.galleryId }}](https://ordinals.com/inscription/${{ steps.build.outputs.galleryId }})
+            - **Preview ID:** [${{ steps.build.outputs.previewId }}](https://ordinals.com/inscription/${{ steps.build.outputs.previewId }})
+            - **Description:** ${{ steps.build.outputs.description }}
+            - **Category:** ${{ steps.build.outputs.category }}
+          labels: gallery
