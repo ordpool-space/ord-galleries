@@ -1,0 +1,58 @@
+name: Submit a new Gallery
+description: Fill out this form to propose a new gallery. The gallery must be already inscribed on mainnet. Unconfirmed transactions may be ignored. Submissions are only suggestions, the moderators are free to reject entries or ask for changes. This list is curated, so there is no commitment from our side that every existing gallery will be listed here. 
+title: "[Gallery] "
+labels: [submission]
+
+body:
+  - type: input
+    id: galleryId
+    attributes:
+      label: Gallery Inscription ID
+      description: The Insciption ID of the gallery that is submitted.
+      placeholder: "e.g. 01234567890abcdef01234567890abcdef01234567890abcdef01234567890abcdi0"
+    validations:
+      required: true
+
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      description: The title of the gallery. If the gallery describes a well-known collection, the name should be exactly in line with how the project is known.
+      placeholder: "e.g. My Gallery"
+    validations:
+      required: true
+
+  - type: input
+    id: previewId
+    attributes:
+      label: Preview Inscription ID (optional)
+      description: An Inscription ID which is used as a preview. This is preferably a scalable image. If no preview is specified, the first inscription of the gallery may be used.
+      placeholder: "e.g. 01234567890abcdef01234567890abcdef01234567890abcdef01234567890abcdi0"
+
+  - type: input
+    id: description
+    attributes:
+      label: Description (one line)
+      description: An optional description of the gallery or the collection. As short as possible, no line breaks, no Markdown, no HTML. Only plain text is allowed.
+      placeholder: "A collection of ..."
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What is the best way to categorize this gallery? Multiple answers are possible. Let us know if you think we should introduce another category!
+      multiple: true
+      options:
+        - art
+        - photography
+        - profile-picture
+        - other
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: License
+      description: The entire content of this repo is licensed under [CC0 1.0 Universal](see https://github.com/ordpool-space/ord-galleries/blob/main/LICENSE). Please read the license first! 
+      options:
+        - label: I hereby agree to release all rights to the content to the public domain.
+          required: true
