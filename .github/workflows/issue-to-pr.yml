@@ -3,40 +3,60 @@ name: Convert Gallery Submission to Pull Request
 on:
   issues:
     types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to process manually"
+        required: true
+        type: number
 
 jobs:
   convert-issue-to-pr:
-    if: contains(github.event.issue.labels.*.name, 'submission')
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'submission'))
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install GitHub CLI (for manual fallback)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Extract and generate gallery file
+      - name: Extract issue data and build YAML
         id: build
         run: |
           mkdir -p galleries
 
-          number="${{ github.event.issue.number }}"
-          body="${{ github.event.issue.body }}"
-          author="${{ github.event.issue.user.login }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            number="${{ inputs.issue_number }}"
+            title=$(gh issue view "$number" --json title -q .title)
+            body=$(gh issue view "$number" --json body -q .body)
+            author=$(gh issue view "$number" --json author -q .author.login)
+          else
+            number="${{ github.event.issue.number }}"
+            title="${{ github.event.issue.title }}"
+            body="${{ github.event.issue.body }}"
+            author="${{ github.event.issue.user.login }}"
+          fi
 
           get_value() {
             echo "$body" | grep -A1 "^${1}:" | tail -n1 | sed 's/^ *//'
           }
 
           galleryId=$(get_value "galleryId")
-          title=$(get_value "title")
           previewId=$(get_value "previewId")
           description=$(get_value "description")
           category=$(get_value "category")
 
-          # Sanitize title into a safe filename
           safe_title=$(echo "$title" \
             | tr '[:upper:]' '[:lower:]' \
             | sed 's/ /-/g' \
@@ -44,8 +64,6 @@ jobs:
 
           [ -z "$safe_title" ] && safe_title="gallery-${number}"
           filename="galleries/${safe_title}.yaml"
-
-          echo "Creating file: $filename"
 
           {
             echo "galleryId: \"$galleryId\""
@@ -64,15 +82,16 @@ jobs:
           echo "description=$description" >> $GITHUB_OUTPUT
           echo "category=$category" >> $GITHUB_OUTPUT
           echo "author=$author" >> $GITHUB_OUTPUT
+          echo "number=$number" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          commit-message: "Add gallery from issue #${{ github.event.issue.number }} (${{ steps.build.outputs.safe_title }})"
-          branch: "gallery-submission-${{ github.event.issue.number }}"
-          title: "Add gallery from issue #${{ github.event.issue.number }} (${{ steps.build.outputs.safe_title }}): \"${{ steps.build.outputs.title }}\""
+          commit-message: "Add gallery from issue #${{ steps.build.outputs.number }} (${{ steps.build.outputs.safe_title }})"
+          branch: "gallery-submission-${{ steps.build.outputs.number }}"
+          title: "Add gallery from issue #${{ steps.build.outputs.number }} (${{ steps.build.outputs.safe_title }}): \"${{ steps.build.outputs.title }}\""
           body: |
-            Closes #${{ github.event.issue.number }}
+            Closes #${{ steps.build.outputs.number }}
 
             Submitted by @${{ steps.build.outputs.author }}.
 
