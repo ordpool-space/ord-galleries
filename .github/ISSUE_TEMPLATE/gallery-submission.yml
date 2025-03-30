@@ -1,24 +1,27 @@
-name: Fill out this form to propose a new gallery.
-description: Fill out this form to propose a new gallery. The gallery must already be inscribed on mainnet. Submissions are only suggestions — moderators may reject entries or request changes.
-title: "[Gallery] "
+name: Submit a New Gallery
 labels: [submission]
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🖼️ Submit a New Ordinal Gallery
+
+        Thanks for contributing to the Ord Galleries repository!
+
+        - 📌 **The title of this issue will be used as the title of your gallery.** Please make it meaningful and precise. If the gallery represents a known collection, use the established name.
+        - 🧾 **The gallery must already be inscribed on mainnet.**
+        - 🛂 **Moderators review each submission.** Your gallery may be rejected or require changes.
+        - 📖 All submissions are publicly visible and licensed under **[CC0 1.0 Universal](https://github.com/ordpool-space/ord-galleries/blob/main/LICENSE)**.
+
+        Please fill out the form below carefully.
+
   - type: input
     id: galleryId
     attributes:
       label: Gallery Inscription ID
       description: The Inscription ID of the gallery that is being submitted.
       placeholder: "e.g. 01234567890abcdef01234567890abcdef01234567890abcdef01234567890abcdi0"
-    validations:
-      required: true
-
-  - type: input
-    id: title
-    attributes:
-      label: Title
-      description: The title of the gallery. If the gallery represents a known collection, please use the established name.
-      placeholder: "e.g. My Gallery"
     validations:
       required: true
 
