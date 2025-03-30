@@ -1,4 +1,5 @@
 name: Submit a New Gallery
+description: An issue templates that collects all data for an automatic gallery submission PR.
 labels: [submission]
 
 body:
