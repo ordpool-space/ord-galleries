@@ -29,6 +29,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gh
+           
+      - name: Install YAML processor yq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y yq
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -54,14 +59,10 @@ jobs:
             author="${{ github.event.issue.user.login }}"
           fi
 
-          get_value() {
-            echo "$body" | grep -A1 "^${1}:" | tail -n1 | sed 's/^ *//'
-          }
-
-          galleryId=$(get_value "galleryId")
-          previewId=$(get_value "previewId")
-          description=$(get_value "description")
-          category=$(get_value "category")
+          galleryId=$(echo "$body" | yq e '.galleryId' -)
+          previewId=$(echo "$body" | yq e '.previewId' -)
+          description=$(echo "$body" | yq e '.description' -)
+          category=$(echo "$body" | yq e '.category' -)
 
           safe_title=$(echo "$title" \
             | tr '[:upper:]' '[:lower:]' \
