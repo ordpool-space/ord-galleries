@@ -60,14 +60,17 @@ jobs:
 
       - name: Extract form values
         id: extract
-        uses: mikefarah/yq@master
-        with:
-          cmd: |
-            echo '${{ steps.fetch.outputs.body || steps.fetch_auto.outputs.body }}' > body.yml
-            echo "galleryId=$(yq '.galleryId' body.yml)" >> $GITHUB_OUTPUT
-            echo "previewId=$(yq '.previewId' body.yml)" >> $GITHUB_OUTPUT
-            echo "description=$(yq '.description' body.yml)" >> $GITHUB_OUTPUT
-            echo "category=$(yq '.category' body.yml)" >> $GITHUB_OUTPUT
+        run: |
+          get_field() {
+            echo "$1" | sed -n "/^### ${2}/,/^### /{/^### /d;p}" | sed '/^[[:space:]]*$/d' | head -n1
+          }
+
+          body='${{ steps.fetch.outputs.body || steps.fetch_auto.outputs.body }}'
+
+          echo "galleryId=$(get_field "$body" 'Gallery Inscription ID')" >> $GITHUB_OUTPUT
+          echo "previewId=$(get_field "$body" 'Preview Inscription ID (optional)')" >> $GITHUB_OUTPUT
+          echo "description=$(get_field "$body" 'Description (one line)')" >> $GITHUB_OUTPUT
+          echo "category=$(get_field "$body" 'Category')" >> $GITHUB_OUTPUT
 
       - name: Build gallery file
         id: build
