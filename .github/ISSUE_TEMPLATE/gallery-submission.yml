@@ -1,5 +1,5 @@
 name: Submit a new Gallery
-description: Fill out this form to propose a new gallery. The gallery must be already inscribed on mainnet. Submissions are only suggestions, the moderators are free to reject entries or ask for changes. 
+description: Fill out this form to propose a new gallery. The gallery must already be inscribed on mainnet. Submissions are only suggestions — moderators may reject entries or request changes.
 title: "[Gallery] "
 labels: [submission]
 
@@ -8,7 +8,7 @@ body:
     id: galleryId
     attributes:
       label: Gallery Inscription ID
-      description: The Insciption ID of the gallery that is submitted.
+      description: The Inscription ID of the gallery that is being submitted.
       placeholder: "e.g. 01234567890abcdef01234567890abcdef01234567890abcdef01234567890abcdi0"
     validations:
       required: true
@@ -17,7 +17,7 @@ body:
     id: title
     attributes:
       label: Title
-      description: The title of the gallery. If the gallery describes a well-known collection, the name should be exactly in line with how the project is known.
+      description: The title of the gallery. If the gallery represents a known collection, please use the established name.
       placeholder: "e.g. My Gallery"
     validations:
       required: true
@@ -26,21 +26,21 @@ body:
     id: previewId
     attributes:
       label: Preview Inscription ID (optional)
-      description: An Inscription ID which is used as a preview. This is preferably a scalable image. If no preview is specified, the first inscription of the gallery may be used.
+      description: An Inscription ID used as the gallery preview image. Ideally, this should be a scalable image (e.g. SVG, PNG, or HTML).
       placeholder: "e.g. 01234567890abcdef01234567890abcdef01234567890abcdef01234567890abcdi0"
 
   - type: input
     id: description
     attributes:
       label: Description (one line)
-      description: An optional description of the gallery or the collection. As short as possible, no line breaks, no Markdown, no HTML. Only plain text is allowed.
+      description: An optional plain-text summary of the gallery or collection. No line breaks, no Markdown, no HTML.
       placeholder: "A collection of ..."
 
   - type: dropdown
     id: category
     attributes:
       label: Category
-      description: What is the best way to categorize this gallery? Multiple answers are possible. Let us know if you think we should introduce another category!
+      description: Choose the most fitting category. You may select more than one. If none fit, select "other" or suggest a new one in a separate issue.
       multiple: true
       options:
         - art
@@ -52,7 +52,7 @@ body:
     id: terms
     attributes:
       label: License
-      description: The entire content of this repo is licensed under [CC0 1.0 Universal](see https://github.com/ordpool-space/ord-galleries/blob/main/LICENSE). Please read the license first! 
+      description: The entire content of this repository is licensed under CC0 1.0 Universal — https://github.com/ordpool-space/ord-galleries/blob/main/LICENSE. Please read the license before submitting.
       options:
         - label: I hereby agree to release all rights to the content to the public domain.
           required: true
