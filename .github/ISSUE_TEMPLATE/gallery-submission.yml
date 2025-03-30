@@ -9,7 +9,7 @@ body:
         Thanks for contributing to the Ord Galleries repository!
 
         - The title of this issue will be used as the title of the gallery. Please make it meaningful and precise. If the gallery represents a known collection, use the established name.
-        - Moderators review each submission. Your gallery may be rejected or require changes.
+        - Moderators review each submission. Your gallery submission may be rejected or require changes.
         - All submissions are publicly visible and licensed under **[CC0 1.0 Universal](https://github.com/ordpool-space/ord-galleries/blob/main/LICENSE)**.
 
   - type: input
