@@ -45,88 +45,130 @@ jobs:
           yaml_file=$(git diff --name-only origin/main | grep '^galleries\/.*\.yaml$')
           file_count=$(echo "$yaml_file" | wc -l)
           if [[ "$file_count" -ne 1 ]]; then
-            echo "❌ PR must contain exactly one YAML file in 'galleries/' directory. Found: $file_count"
-            exit 1
+            echo "yaml_file=" >> $GITHUB_OUTPUT
+          else
+            echo "yaml_file=$yaml_file" >> $GITHUB_OUTPUT
           fi
-          echo "yaml_file=$yaml_file" >> $GITHUB_OUTPUT
-          echo "✅ YAML file determined: $yaml_file"
 
-      - name: Validate YAML syntax and JSON convertibility
-        uses: mikefarah/yq@master
-        with:
-          cmd: |
-            yaml_file=${{ steps.yaml_file.outputs.yaml_file }}
-            yq eval "$yaml_file" >/dev/null || (echo "❌ YAML syntax validation failed. Please ensure the file is valid YAML." && exit 1)
-            yq eval -o=json "$yaml_file" >/dev/null || (echo "❌ YAML cannot be converted to JSON. Check for incompatible YAML structures." && exit 1)
-            echo "✅ YAML syntax and JSON conversion are valid."
+      - name: Validate YAML
+        id: validation
+        run: |
+          yaml_file="${{ steps.yaml_file.outputs.yaml_file }}"
+          ERRORS=""
+          SUCCESS=""
 
-      - name: Validate required fields and formats
-        uses: mikefarah/yq@master
-        with:
-          cmd: |
-            yaml_file=${{ steps.yaml_file.outputs.yaml_file }}
+          if [[ -z "$yaml_file" ]]; then
+            ERRORS+="❌ Exactly one YAML file must be in 'galleries/'.\n"
+          else
+            SUCCESS+="✅ YAML file determined: $yaml_file\n"
+            
+            if ! yq eval "$yaml_file" >/dev/null 2>&1; then
+              ERRORS+="❌ YAML syntax is invalid.\n"
+            else
+              SUCCESS+="✅ YAML syntax is valid.\n"
+            fi
+
+            if ! yq eval -o=json "$yaml_file" >/dev/null 2>&1; then
+              ERRORS+="❌ YAML cannot be converted to JSON.\n"
+            else
+              SUCCESS+="✅ YAML converts successfully to JSON.\n"
+            fi
 
             title=$(yq '.title' "$yaml_file")
             galleryId=$(yq '.galleryId' "$yaml_file")
             previewId=$(yq '.previewId' "$yaml_file")
             category=$(yq '.category' "$yaml_file")
-
             hex_pattern='^[0-9a-f]{64}i[0-9]+$'
 
             if [[ -z "$title" || "$title" == "null" ]]; then
-              echo "❌ 'title' is required and must not be empty."
-              exit 1
+              ERRORS+="❌ 'title' is required.\n"
             else
-              echo "✅ 'title' is present."
+              SUCCESS+="✅ 'title' is present.\n"
             fi
 
             if ! [[ "$galleryId" =~ $hex_pattern ]]; then
-              echo "❌ 'galleryId' must be exactly 64 hexadecimal characters followed by 'i' and a number (e.g., abc123...i0)."
-              exit 1
+              ERRORS+="❌ 'galleryId' must be a 64-char hex string followed by 'i' and a number.\n"
             else
-              echo "✅ 'galleryId' format is valid."
+              SUCCESS+="✅ 'galleryId' format is valid.\n"
             fi
 
             if [[ "$previewId" != "null" && ! "$previewId" =~ $hex_pattern ]]; then
-              echo "❌ 'previewId', if provided, must also be exactly 64 hexadecimal characters followed by 'i' and a number (e.g., abc123...i0)."
-              exit 1
+              ERRORS+="❌ 'previewId' must match the same format as galleryId.\n"
             else
-              echo "✅ 'previewId' format is valid or not provided."
+              SUCCESS+="✅ 'previewId' format is valid or not provided.\n"
             fi
 
             if [[ -z "$category" || "$category" == "null" ]]; then
-              echo "❌ 'category' is required and must contain at least one entry."
-              exit 1
+              ERRORS+="❌ 'category' must have at least one entry.\n"
             else
               IFS=', ' read -ra categories <<< "$category"
               for cat in "${categories[@]}"; do
                 if ! [[ "$cat" =~ ^[a-z]+$ ]]; then
-                  echo "❌ Category '$cat' is invalid. Categories must only contain lowercase letters without spaces or special characters."
-                  exit 1
+                  ERRORS+="❌ Category '$cat' is invalid (lowercase letters only).\n"
                 fi
               done
-              echo "✅ All categories are valid."
+              if [[ "$ERRORS" != *"Category"* ]]; then
+                SUCCESS+="✅ All categories valid.\n"
+              fi
             fi
+          fi
 
-      - name: Comment success on PR
+          if [[ -z "$ERRORS" ]]; then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+
+          echo -e "errors<<EOF\n$ERRORS\nEOF" >> $GITHUB_OUTPUT
+          echo -e "success<<EOF\n$SUCCESS\nEOF" >> $GITHUB_OUTPUT
+
+      - name: Remove labels
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
+            await github.rest.issues.removeLabel({
               issue_number: ${{ steps.pr_info.outputs.pr_number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '✅ YAML validation passed successfully!'
-            })
+              name: 'pr-valid'
+            }).catch(() => {});
+            
+            await github.rest.issues.removeLabel({
+              issue_number: ${{ steps.pr_info.outputs.pr_number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'pr-invalid'
+            }).catch(() => {});
 
-      - name: Comment failure on PR
-        if: failure()
+      - name: Comment results and manage labels
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
+            const body = `
+            ## YAML Validation Results
+
+            ### ✅ Successes:
+            ${{ steps.validation.outputs.success }}
+
+            ### ❌ Errors:
+            ${{ steps.validation.outputs.errors }}
+
+            [View Action Logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+            `;
+
+            await github.rest.issues.createComment({
               issue_number: ${{ steps.pr_info.outputs.pr_number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '❌ YAML validation failed. Please review the action logs, correct the errors, and push again.'
-            })
+              body
+            });
+
+            const label = '${{ steps.validation.outputs.result }}' === 'success' ? 'pr-valid' : 'pr-invalid';
+
+            await github.rest.issues.addLabels({
+              issue_number: ${{ steps.pr_info.outputs.pr_number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: [label]
+            });
