@@ -168,9 +168,9 @@ jobs:
       
             const body =
               '## YAML Validation Results\n\n' +
-              '### ✅ Successes:\n' +
+              '### Successes:\n' +
               success + '\n\n' +
-              '### ❌ Errors:\n' +
+              '### Errors:\n' +
               errors + '\n\n' +
               `[🔍 View Action Logs](${logsUrl})`;
       
