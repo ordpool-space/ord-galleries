@@ -93,7 +93,7 @@ jobs:
             fi
 
             if [[ "$previewId" != "null" && ! "$previewId" =~ $hex_pattern ]]; then
-              ERRORS+="❌ 'previewId' must match the same format as galleryId.\n"
+              ERRORS+="❌ 'previewId' must be a 64-char hex string followed by 'i' and a number.\n"
             else
               SUCCESS+="✅ 'previewId' format is valid or not provided.\n"
             fi
