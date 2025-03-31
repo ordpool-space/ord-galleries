@@ -149,12 +149,17 @@ jobs:
 
       - name: Comment results + set label
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
+          RESULT: ${{ steps.validation.outputs.result }}
+          SUCCESS: ${{ steps.validation.outputs.success }}
+          ERRORS: ${{ steps.validation.outputs.errors }}
         with:
           script: |
-            const result = `\${{ steps.validation.outputs.result }}`;
-            const successRaw = `\${{ steps.validation.outputs.success }}`.trim();
-            const errorsRaw = `\${{ steps.validation.outputs.errors }}`.trim();
-            const pr = parseInt(`\${{ steps.pr_info.outputs.pr_number }}`);
+            const result = process.env.RESULT.trim();
+            const successRaw = process.env.SUCCESS.trim();
+            const errorsRaw = process.env.ERRORS.trim();
+            const pr = parseInt(process.env.PR_NUMBER, 10);
       
             const success = successRaw.length > 0 ? successRaw : 'none';
             const errors = errorsRaw.length > 0 ? errorsRaw : 'none';
