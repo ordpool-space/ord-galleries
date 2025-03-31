@@ -22,7 +22,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Determine PR Number
         id: pr_info
@@ -33,11 +36,15 @@ jobs:
             echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Checkout PR Branch (manual trigger only)
+      - name: Checkout PR branch (manual only)
         if: github.event_name == 'workflow_dispatch'
         run: |
           git fetch origin pull/${{ steps.pr_info.outputs.pr_number }}/head:pr_branch
           git checkout pr_branch
+
+      - name: Fetch base branch (pull_request only)
+        if: github.event_name == 'pull_request'
+        run: git fetch origin main
 
       - name: Determine YAML file
         id: yaml_file
@@ -60,8 +67,8 @@ jobs:
           if [[ -z "$yaml_file" ]]; then
             ERRORS+="❌ Exactly one YAML file must be in 'galleries/'.\n"
           else
-            SUCCESS+="✅ YAML file determined: $yaml_file\n"
-            
+            SUCCESS+="✅ YAML file detected: $yaml_file\n"
+
             if ! yq eval "$yaml_file" >/dev/null 2>&1; then
               ERRORS+="❌ YAML syntax is invalid.\n"
             else
@@ -71,7 +78,7 @@ jobs:
             if ! yq eval -o=json "$yaml_file" >/dev/null 2>&1; then
               ERRORS+="❌ YAML cannot be converted to JSON.\n"
             else
-              SUCCESS+="✅ YAML converts successfully to JSON.\n"
+              SUCCESS+="✅ JSON conversion is valid.\n"
             fi
 
             title=$(yq '.title' "$yaml_file")
@@ -87,15 +94,15 @@ jobs:
             fi
 
             if ! [[ "$galleryId" =~ $hex_pattern ]]; then
-              ERRORS+="❌ 'galleryId' must be a 64-char hex string followed by 'i' and a number.\n"
+              ERRORS+="❌ 'galleryId' must be a 64-character hex string followed by 'i' and a number.\n"
             else
               SUCCESS+="✅ 'galleryId' format is valid.\n"
             fi
 
             if [[ "$previewId" != "null" && ! "$previewId" =~ $hex_pattern ]]; then
-              ERRORS+="❌ 'previewId' must be a 64-char hex string followed by 'i' and a number.\n"
+              ERRORS+="❌ 'previewId' must be a 64-character hex string followed by 'i' and a number.\n"
             else
-              SUCCESS+="✅ 'previewId' format is valid or not provided.\n"
+              SUCCESS+="✅ 'previewId' is valid or not provided.\n"
             fi
 
             if [[ -z "$category" || "$category" == "null" ]]; then
@@ -104,11 +111,11 @@ jobs:
               IFS=', ' read -ra categories <<< "$category"
               for cat in "${categories[@]}"; do
                 if ! [[ "$cat" =~ ^[a-z]+$ ]]; then
-                  ERRORS+="❌ Category '$cat' is invalid (lowercase letters only).\n"
+                  ERRORS+="❌ Category '$cat' is invalid. Only lowercase letters allowed.\n"
                 fi
               done
               if [[ "$ERRORS" != *"Category"* ]]; then
-                SUCCESS+="✅ All categories valid.\n"
+                SUCCESS+="✅ All categories are valid.\n"
               fi
             fi
           fi
@@ -122,40 +129,40 @@ jobs:
           echo -e "errors<<EOF\n$ERRORS\nEOF" >> $GITHUB_OUTPUT
           echo -e "success<<EOF\n$SUCCESS\nEOF" >> $GITHUB_OUTPUT
 
-      - name: Remove labels
+      - name: Remove validation labels
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.issues.removeLabel({
-              issue_number: ${{ steps.pr_info.outputs.pr_number }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'pr-valid'
-            }).catch(() => {});
-            
-            await github.rest.issues.removeLabel({
-              issue_number: ${{ steps.pr_info.outputs.pr_number }},
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'pr-invalid'
-            }).catch(() => {});
+            const labels = ['pr-valid', 'pr-invalid'];
+            for (const label of labels) {
+              try {
+                await github.rest.issues.removeLabel({
+                  issue_number: ${{ steps.pr_info.outputs.pr_number }},
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label
+                });
+              } catch (e) {
+                // Ignore if label doesn't exist
+              }
+            }
 
-      - name: Comment results and manage labels
+      - name: Comment results + set label
         uses: actions/github-script@v7
         with:
           script: |
+            const result = `${{ steps.validation.outputs.result }}`;
             const body = `
-            ## YAML Validation Results
+## YAML Validation Results
 
-            ### ✅ Successes:
-            ${{ steps.validation.outputs.success }}
+### ✅ Successes:
+${{ steps.validation.outputs.success }}
 
-            ### ❌ Errors:
-            ${{ steps.validation.outputs.errors }}
+### ❌ Errors:
+${{ steps.validation.outputs.errors }}
 
-            [View Action Logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-
-            `;
+[🔍 View Action Logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+`;
 
             await github.rest.issues.createComment({
               issue_number: ${{ steps.pr_info.outputs.pr_number }},
@@ -164,11 +171,9 @@ jobs:
               body
             });
 
-            const label = '${{ steps.validation.outputs.result }}' === 'success' ? 'pr-valid' : 'pr-invalid';
-
             await github.rest.issues.addLabels({
               issue_number: ${{ steps.pr_info.outputs.pr_number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: [label]
+              labels: [result === 'success' ? 'pr-valid' : 'pr-invalid']
             });
