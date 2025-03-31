@@ -1,0 +1,140 @@
+name: Validate Gallery YAML
+
+on:
+  pull_request:
+    paths:
+      - 'galleries/*.yaml'
+    types: [opened, synchronize]
+
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull Request number to validate"
+        required: true
+        type: number
+
+jobs:
+  validate-gallery:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine PR Number
+        id: pr_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout PR Branch (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch origin pull/${{ steps.pr_info.outputs.pr_number }}/head:pr_branch
+          git checkout pr_branch
+
+      - name: Ensure exactly one YAML file in PR
+        run: |
+          file_count=$(git diff --name-only origin/${{ github.base_ref }} | grep -Ec '^galleries\/.*\.yaml$')
+          if [[ "$file_count" -ne 1 ]]; then
+            echo "❌ PR must contain exactly one YAML file in 'galleries/' directory. Found: $file_count"
+            exit 1
+          else
+            echo "✅ Exactly one YAML file detected."
+          fi
+
+      - name: Install yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Validate YAML syntax and JSON convertibility
+        run: |
+          yaml_file=$(git diff --name-only origin/${{ github.base_ref }} | grep '^galleries\/.*\.yaml$')
+          if ! yq eval "$yaml_file" >/dev/null; then
+            echo "❌ YAML syntax validation failed."
+            exit 1
+          else
+            echo "✅ YAML syntax valid."
+          fi
+
+          if ! yq eval -o=json "$yaml_file" >/dev/null; then
+            echo "❌ YAML to JSON conversion failed."
+            exit 1
+          else
+            echo "✅ YAML can be converted to JSON."
+          fi
+
+      - name: Validate required fields and formats
+        run: |
+          yaml_file=$(git diff --name-only origin/${{ github.base_ref }} | grep '^galleries\/.*\.yaml$')
+
+          title=$(yq '.title' "$yaml_file")
+          galleryId=$(yq '.galleryId' "$yaml_file")
+          previewId=$(yq '.previewId' "$yaml_file")
+          category=$(yq '.category' "$yaml_file")
+
+          hex_pattern='^[0-9a-f]{64}i[0-9]+$'
+
+          if [[ -z "$title" || "$title" == "null" ]]; then
+            echo "❌ 'title' is required."
+            exit 1
+          else
+            echo "✅ 'title' is present."
+          fi
+
+          if ! [[ "$galleryId" =~ $hex_pattern ]]; then
+            echo "❌ 'galleryId' must be a 64-character hex string followed by 'i' and a number."
+            exit 1
+          else
+            echo "✅ 'galleryId' format valid."
+          fi
+
+          if [[ "$previewId" != "null" && ! "$previewId" =~ $hex_pattern ]]; then
+            echo "❌ 'previewId' must be a 64-character hex string followed by 'i' and a number if provided."
+            exit 1
+          else
+            echo "✅ 'previewId' format valid or not provided."
+          fi
+
+          if [[ -z "$category" || "$category" == "null" ]]; then
+            echo "❌ 'category' must have at least one entry."
+            exit 1
+          else
+            IFS=', ' read -ra categories <<< "$category"
+            for cat in "${categories[@]}"; do
+              if ! [[ "$cat" =~ ^[a-z]+$ ]]; then
+                echo "❌ Category '$cat' is invalid. Must be lowercase letters only."
+                exit 1
+              fi
+            done
+            echo "✅ All categories valid."
+          fi
+
+      - name: Comment success on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ steps.pr_info.outputs.pr_number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ YAML validation passed successfully!'
+            })
+
+      - name: Comment failure on PR
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ steps.pr_info.outputs.pr_number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ YAML validation failed. Please correct the errors and push again.'
+            })
