@@ -147,41 +147,42 @@ jobs:
               }
             }
 
-            - name: Comment results + set label
-              uses: actions/github-script@v7
-              with:
-                script: |
-                  const result = `\${{ steps.validation.outputs.result }}`;
-                  const successRaw = `\${{ steps.validation.outputs.success }}`.trim();
-                  const errorsRaw = `\${{ steps.validation.outputs.errors }}`.trim();
-                  const pr = parseInt(`\${{ steps.pr_info.outputs.pr_number }}`);
-            
-                  const success = successRaw.length > 0 ? successRaw : 'none';
-                  const errors = errorsRaw.length > 0 ? errorsRaw : 'none';
-            
-                  const body = `
-            ## YAML Validation Results
-            
-            ### ✅ Successes:
-            ${success}
-            
-            ### ❌ Errors:
-            ${errors}
-            
-            [🔍 View Action Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            `;
-            
-                  await github.rest.issues.createComment({
-                    issue_number: pr,
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    body
-                  });
-            
-                  await github.rest.issues.addLabels({
-                    issue_number: pr,
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    labels: [result === 'success' ? 'pr-valid' : 'pr-invalid']
-                  });
-
+      - name: Comment results + set label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = `\${{ steps.validation.outputs.result }}`;
+            const successRaw = `\${{ steps.validation.outputs.success }}`.trim();
+            const errorsRaw = `\${{ steps.validation.outputs.errors }}`.trim();
+            const pr = parseInt(`\${{ steps.pr_info.outputs.pr_number }}`);
+      
+            const success = successRaw.length > 0 ? successRaw : 'none';
+            const errors = errorsRaw.length > 0 ? errorsRaw : 'none';
+      
+            const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+      
+            const body = `
+      ## YAML Validation Results
+      
+      ### ✅ Successes:
+      ${success}
+      
+      ### ❌ Errors:
+      ${errors}
+      
+      [🔍 View Action Logs](${logsUrl})
+      `;
+      
+            await github.rest.issues.createComment({
+              issue_number: pr,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+      
+            await github.rest.issues.addLabels({
+              issue_number: pr,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: [result === 'success' ? 'pr-valid' : 'pr-invalid']
+            });
