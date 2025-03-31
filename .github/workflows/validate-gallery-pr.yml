@@ -161,17 +161,13 @@ jobs:
       
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
       
-            const body = `
-## YAML Validation Results
-
-### ✅ Successes:
-${success}
-
-### ❌ Errors:
-${errors}
-
-[🔍 View Action Logs](${logsUrl})
-`;
+            const body =
+              '## YAML Validation Results\n\n' +
+              '### ✅ Successes:\n' +
+              success + '\n\n' +
+              '### ❌ Errors:\n' +
+              errors + '\n\n' +
+              `[🔍 View Action Logs](${logsUrl})`;
       
             await github.rest.issues.createComment({
               issue_number: pr,
