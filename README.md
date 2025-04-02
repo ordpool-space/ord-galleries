@@ -6,7 +6,7 @@ This repository curates a list of **Ordinal Galleries** — inscriptions that gr
 
 ## Why this repository?
 
-Many existing collections lack an on-chain parent/child relationship and rely solely on off-chain indexing (most notably by platforms like Magic Eden).  
+Many existing collections lack an on-chain parent/child relationship and rely solely on off-chain indexing (most notably by platforms like Magic Eden).
 **Ordinal Galleries** [were introduced](https://github.com/ordinals/ord/pull/4212) to bring this metadata on-chain — as self-contained inscriptions that describe and reference other inscriptions.
 
 However, it’s difficult to determine:
