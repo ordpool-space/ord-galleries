@@ -66,7 +66,7 @@ If someone attempts to sneak in unauthorized or unauthentic inscriptions, they w
 This is an open, community-driven project. Everyone is welcome to participate:
 
 - [Submit new inscribed galleries](https://github.com/ordpool-space/ord-galleries/issues/new?template=gallery-submission.yml)
-- [Suggest a new Category](https://github.com/ordpool-space/ord-galleries/issues/new?template=suggest-category.yml)
+- [Suggest a new category](https://github.com/ordpool-space/ord-galleries/issues/new?template=suggest-category.yml)
 - [Propose improvements](https://github.com/ordpool-space/ord-galleries/discussions)
 - [Review or moderate pull requests](https://github.com/ordpool-space/ord-galleries/pulls)
 - [Suggest new features](https://github.com/ordpool-space/ord-galleries/issues/new)
