@@ -1,0 +1,24 @@
+name: Suggest a New Category
+description: Propose a new category for classifying Ordinal Galleries.
+title: "[Category] "
+labels: [category-suggestion]
+
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Name of the new category
+      placeholder: "e.g. generative-art"
+      description: Use lowercase letters and dashes only.
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Why should this category be added?
+      placeholder: >
+        Briefly explain why this category is needed. 
+        What kind of galleries would fall into it? Is it already used informally in the ecosystem?
+    validations:
+      required: true
